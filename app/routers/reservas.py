@@ -15,9 +15,9 @@ def obtener_reservas(
 ):
     query = db.query(Reservation).options(joinedload(Reservation.usuario))
     if code:
-        query = query.filter(Reservation.Code == code)
+        query = query.filter(Reservation.code == code)
     if fecha:
-        query = query.filter(Reservation.Date == fecha)
+        query = query.filter(Reservation.date == fecha)
     return query.all()
 
 @router.get("/{reservation_number}", response_model=ReservationRespuesta)
@@ -25,7 +25,7 @@ def obtener_reserva(reservation_number: str, db: Session = Depends(get_db)):
     reserva = db.query(Reservation).options(
         joinedload(Reservation.usuario),
         joinedload(Reservation.detalles)
-    ).filter(Reservation.Reservation_number == reservation_number).first()
+    ).filter(Reservation.reservation_number == reservation_number).first()
     if not reserva:
         raise HTTPException(status_code=404, detail="Reserva no encontrada")
     return reserva
@@ -33,11 +33,15 @@ def obtener_reserva(reservation_number: str, db: Session = Depends(get_db)):
 @router.post("/", response_model=ReservationRespuesta, status_code=201)
 def crear_reserva(reserva: ReservationCrear, db: Session = Depends(get_db)):
     existe = db.query(Reservation).filter(
-        Reservation.Reservation_number == reserva.Reservation_number
+        Reservation.reservation_number == reserva.reservation_number
     ).first()
     if existe:
         raise HTTPException(status_code=400, detail="El número de reserva ya existe")
-    nueva = Reservation(**reserva.model_dump())
+    nueva = Reservation(
+        reservation_number=reserva.reservation_number,
+        date=reserva.date,
+        code=reserva.code,
+    )
     db.add(nueva)
     db.commit()
     db.refresh(nueva)
@@ -46,7 +50,7 @@ def crear_reserva(reserva: ReservationCrear, db: Session = Depends(get_db)):
 @router.delete("/{reservation_number}")
 def cancelar_reserva(reservation_number: str, db: Session = Depends(get_db)):
     reserva = db.query(Reservation).filter(
-        Reservation.Reservation_number == reservation_number
+        Reservation.reservation_number == reservation_number
     ).first()
     if not reserva:
         raise HTTPException(status_code=404, detail="Reserva no encontrada")
@@ -58,22 +62,29 @@ def cancelar_reserva(reservation_number: str, db: Session = Depends(get_db)):
 
 @router.get("/{reservation_number}/detalles", response_model=List[ReservationDetailRespuesta])
 def obtener_detalles(reservation_number: str, db: Session = Depends(get_db)):
-    return db.query(ReservationDetail).options(
-        joinedload(ReservationDetail.espacio)
-    ).filter(ReservationDetail.Reservation_number == reservation_number).all()
+    return db.query(ReservationDetail).filter(
+        ReservationDetail.reservation_number == reservation_number
+    ).all()
 
 @router.post("/{reservation_number}/detalles", response_model=ReservationDetailRespuesta, status_code=201)
 def agregar_detalle(reservation_number: str, detalle: ReservationDetailCrear, db: Session = Depends(get_db)):
-    # Verificar conflicto de horario
     conflicto = db.query(ReservationDetail).filter(
-        ReservationDetail.SPACE_ID == detalle.SPACE_ID,
-        ReservationDetail.BUILDING_ID == detalle.BUILDING_ID,
-        ReservationDetail.Start_Time == detalle.Start_Time,
-        ReservationDetail.Status != "C",
+        ReservationDetail.space_id == detalle.space_id,
+        ReservationDetail.building_id == detalle.building_id,
+        ReservationDetail.start_time == detalle.start_time,
+        ReservationDetail.status != "C",
     ).first()
     if conflicto:
         raise HTTPException(status_code=400, detail="Ya existe una reserva en ese horario para este espacio")
-    nuevo_detalle = ReservationDetail(**detalle.model_dump())
+    nuevo_detalle = ReservationDetail(
+        line_number=detalle.line_number,
+        reservation_number=detalle.reservation_number,
+        space_id=detalle.space_id,
+        building_id=detalle.building_id,
+        start_time=detalle.start_time,
+        end_time=detalle.end_time,
+        status=detalle.status,
+    )
     db.add(nuevo_detalle)
     db.commit()
     db.refresh(nuevo_detalle)
@@ -85,11 +96,11 @@ def actualizar_estado_detalle(reservation_number: str, line_number: float, statu
     if status not in estados_validos:
         raise HTTPException(status_code=400, detail="Estado inválido. Usa: A (Activo), C (Cancelado), P (Pendiente)")
     detalle = db.query(ReservationDetail).filter(
-        ReservationDetail.Reservation_number == reservation_number,
-        ReservationDetail.Line_number == line_number
+        ReservationDetail.reservation_number == reservation_number,
+        ReservationDetail.line_number == line_number
     ).first()
     if not detalle:
         raise HTTPException(status_code=404, detail="Detalle no encontrado")
-    detalle.Status = status
+    detalle.status = status
     db.commit()
     return {"mensaje": f"Estado actualizado a {status}"}
