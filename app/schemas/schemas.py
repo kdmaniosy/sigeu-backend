@@ -1,23 +1,34 @@
 from pydantic import BaseModel, EmailStr
 from typing import Optional
-from datetime import datetime
+from datetime import date
 
-# ─── USUARIO ───────────────────────────────
+# ─── USER TYPE ─────────────────────────────
 
-class UsuarioBase(BaseModel):
-    nombre: str
-    apellido: str
-    correo: EmailStr
-    codigo: str
-    rol: str
+class UserTypeBase(BaseModel):
+    usertype_id: str
+    name: str
 
-class UsuarioCrear(UsuarioBase):
+class UserTypeRespuesta(UserTypeBase):
+    class Config:
+        from_attributes = True
+
+# ─── USER ──────────────────────────────────
+
+class UserBase(BaseModel):
+    code: str
+    name1: str
+    name2: Optional[str] = None
+    last_name1: str
+    last_name2: Optional[str] = None
+    email: EmailStr
+    cellphone: Optional[str] = None
+    usertype_id: str
+
+class UserCrear(UserBase):
     contrasena: str
 
-class UsuarioRespuesta(UsuarioBase):
-    id: int
-    activo: bool
-    creado_en: datetime
+class UserRespuesta(UserBase):
+    tipo_usuario: Optional[UserTypeRespuesta] = None
 
     class Config:
         from_attributes = True
@@ -25,53 +36,91 @@ class UsuarioRespuesta(UsuarioBase):
 # ─── AUTH ──────────────────────────────────
 
 class Login(BaseModel):
-    correo: EmailStr
+    email: EmailStr
     contrasena: str
 
 class Token(BaseModel):
     access_token: str
     token_type: str
-    usuario: UsuarioRespuesta
+    usuario: UserRespuesta
 
-# ─── ESPACIO ───────────────────────────────
+# ─── LOCATION ──────────────────────────────
 
-class EspacioBase(BaseModel):
-    nombre: str
-    tipo: str
-    capacidad: int
-    piso: int
-    descripcion: Optional[str] = None
-    equipamiento: Optional[str] = None
-
-class EspacioCrear(EspacioBase):
-    pass
-
-class EspacioRespuesta(EspacioBase):
-    id: int
-    disponible: bool
-    creado_en: datetime
+class LocationRespuesta(BaseModel):
+    location_id: str
+    name: str
 
     class Config:
         from_attributes = True
 
-# ─── RESERVA ───────────────────────────────
+# ─── BUILDING ──────────────────────────────
 
-class ReservaBase(BaseModel):
-    espacio_id: int
-    fecha: str
-    hora_inicio: str
-    hora_fin: str
-    motivo: Optional[str] = None
+class BuildingRespuesta(BaseModel):
+    building_id: str
+    name: str
+    location_id: str
 
-class ReservaCrear(ReservaBase):
+    class Config:
+        from_attributes = True
+
+# ─── SPACE TYPE ────────────────────────────
+
+class SpaceTypeRespuesta(BaseModel):
+    space_type_id: str
+    name: str
+
+    class Config:
+        from_attributes = True
+
+# ─── SPACE ─────────────────────────────────
+
+class SpaceBase(BaseModel):
+    space_id: str
+    building_id: str
+    name: str
+    capacity: float
+    space_type_id: str
+
+class SpaceCrear(SpaceBase):
     pass
 
-class ReservaRespuesta(ReservaBase):
-    id: int
-    usuario_id: int
-    estado: str
-    creado_en: datetime
-    espacio: EspacioRespuesta
+class SpaceRespuesta(SpaceBase):
+    tipo_espacio: Optional[SpaceTypeRespuesta] = None
+    edificio: Optional[BuildingRespuesta] = None
 
+    class Config:
+        from_attributes = True
+
+# ─── RESERVATION ───────────────────────────
+
+class ReservationBase(BaseModel):
+    reservation_number: str
+    date: date
+    code: str
+
+class ReservationCrear(ReservationBase):
+    pass
+
+class ReservationRespuesta(ReservationBase):
+    usuario: Optional[UserRespuesta] = None
+
+    class Config:
+        from_attributes = True
+
+# ─── RESERVATION DETAIL ────────────────────
+
+class ReservationDetailBase(BaseModel):
+    line_number: float
+    reservation_number: str
+    space_id: str
+    building_id: str
+    start_time: date
+    end_time: date
+    status: str
+
+class ReservationDetailCrear(ReservationDetailBase):
+    pass
+
+class ReservationDetailRespuesta(ReservationDetailBase):
     class Config:
         from_attributes = True

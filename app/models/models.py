@@ -1,52 +1,110 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Text
+from sqlalchemy import Column, String, Numeric, Date, ForeignKey, ForeignKeyConstraint
 from sqlalchemy.orm import relationship
-from sqlalchemy.sql import func
 from app.database import Base
 
-class Usuario(Base):
-    __tablename__ = "usuarios"
 
-    id = Column(Integer, primary_key=True, index=True)
-    nombre = Column(String(100), nullable=False)
-    apellido = Column(String(100), nullable=False)
-    correo = Column(String(150), unique=True, index=True, nullable=False)
-    codigo = Column(String(50), unique=True, nullable=False)
-    rol = Column(String(20), nullable=False)  # estudiante, docente, admin
-    contrasena = Column(String(255), nullable=False)
-    activo = Column(Boolean, default=True)
-    creado_en = Column(DateTime(timezone=True), server_default=func.now())
+class UserType(Base):
+    __tablename__ = "user_type"
+    __table_args__ = {"schema": "sigeu"}
 
-    reservas = relationship("Reserva", back_populates="usuario")
+    usertype_id = Column(String(2), primary_key=True)
+    name = Column(String(20), nullable=False)
+
+    usuarios = relationship("User", back_populates="tipo_usuario")
 
 
-class Espacio(Base):
-    __tablename__ = "espacios"
+class Location(Base):
+    __tablename__ = "location"
+    __table_args__ = {"schema": "sigeu"}
 
-    id = Column(Integer, primary_key=True, index=True)
-    nombre = Column(String(100), nullable=False)
-    tipo = Column(String(50), nullable=False)  # aula, laboratorio
-    capacidad = Column(Integer, nullable=False)
-    piso = Column(Integer, nullable=False)
-    disponible = Column(Boolean, default=True)
-    descripcion = Column(Text, nullable=True)
-    equipamiento = Column(Text, nullable=True)
-    creado_en = Column(DateTime(timezone=True), server_default=func.now())
+    location_id = Column(String(2), primary_key=True)
+    name = Column(String(100), nullable=False)
 
-    reservas = relationship("Reserva", back_populates="espacio")
+    edificios = relationship("Building", back_populates="ubicacion")
 
 
-class Reserva(Base):
-    __tablename__ = "reservas"
+class Building(Base):
+    __tablename__ = "building"
+    __table_args__ = {"schema": "sigeu"}
 
-    id = Column(Integer, primary_key=True, index=True)
-    usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False)
-    espacio_id = Column(Integer, ForeignKey("espacios.id"), nullable=False)
-    fecha = Column(String(20), nullable=False)
-    hora_inicio = Column(String(10), nullable=False)
-    hora_fin = Column(String(10), nullable=False)
-    motivo = Column(Text, nullable=True)
-    estado = Column(String(20), default="Pendiente")  # Pendiente, Confirmada, Cancelada, Completada
-    creado_en = Column(DateTime(timezone=True), server_default=func.now())
+    building_id = Column(String(2), primary_key=True)
+    name = Column(String(50), nullable=False)
+    location_id = Column(String(2), ForeignKey("sigeu.location.location_id"), nullable=False)
 
-    usuario = relationship("Usuario", back_populates="reservas")
-    espacio = relationship("Espacio", back_populates="reservas")
+    ubicacion = relationship("Location", back_populates="edificios")
+    espacios = relationship("Space", back_populates="edificio")
+
+
+class SpaceType(Base):
+    __tablename__ = "space_type"
+    __table_args__ = {"schema": "sigeu"}
+
+    space_type_id = Column(String(2), primary_key=True)
+    name = Column(String(30), nullable=False)
+
+    espacios = relationship("Space", back_populates="tipo_espacio")
+
+
+class Space(Base):
+    __tablename__ = "space"
+    __table_args__ = {"schema": "sigeu"}
+
+    space_id = Column(String(2), primary_key=True)
+    building_id = Column(String(2), ForeignKey("sigeu.building.building_id"), primary_key=True)
+    name = Column(String(30), nullable=False)
+    capacity = Column(Numeric, nullable=False)
+    space_type_id = Column(String(2), ForeignKey("sigeu.space_type.space_type_id"), nullable=False)
+    location_id = Column(String(2), nullable=True)
+
+    edificio = relationship("Building", back_populates="espacios")
+    tipo_espacio = relationship("SpaceType", back_populates="espacios")
+
+
+class User(Base):
+    __tablename__ = "user"
+    __table_args__ = {"schema": "sigeu"}
+
+    code = Column(String(10), primary_key=True)
+    name1 = Column(String(30), nullable=False)
+    name2 = Column(String(30), nullable=True)
+    last_name1 = Column(String(30), nullable=False)
+    last_name2 = Column(String(30), nullable=True)
+    email = Column(String(60), nullable=False)
+    cellphone = Column(String(15), nullable=True)
+    usertype_id = Column(String(2), ForeignKey("sigeu.user_type.usertype_id"), nullable=False)
+
+    tipo_usuario = relationship("UserType", back_populates="usuarios")
+    reservas = relationship("Reservation", back_populates="usuario")
+
+
+class Reservation(Base):
+    __tablename__ = "reservation"
+    __table_args__ = {"schema": "sigeu"}
+
+    reservation_number = Column(String(2), primary_key=True)
+    date = Column(Date, nullable=False)
+    code = Column(String(10), ForeignKey("sigeu.user.code"), nullable=False)
+
+    usuario = relationship("User", back_populates="reservas")
+    detalles = relationship("ReservationDetail", back_populates="reserva")
+
+
+class ReservationDetail(Base):
+    __tablename__ = "reservation_detail"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["reservation_number"],
+            ["sigeu.reservation.reservation_number"]
+        ),
+        {"schema": "sigeu"}
+    )
+
+    line_number = Column(Numeric, primary_key=True)
+    reservation_number = Column(String(2), primary_key=True)
+    space_id = Column(String(2), nullable=False)
+    building_id = Column(String(2), nullable=False)
+    start_time = Column(Date, nullable=False)
+    end_time = Column(Date, nullable=False)
+    status = Column(String(1), nullable=False)
+
+    reserva = relationship("Reservation", back_populates="detalles")

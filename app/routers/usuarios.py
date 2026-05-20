@@ -1,48 +1,53 @@
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
-from typing import List
+from sqlalchemy.orm import Session, joinedload
+from typing import List, Optional
 from app.database import get_db
-from app.models.models import Usuario
-from app.schemas.schemas import UsuarioRespuesta
+from app.models.models import User, UserType
+from app.schemas.schemas import UserRespuesta, UserTypeRespuesta
 
 router = APIRouter(prefix="/usuarios", tags=["Usuarios"])
 
-@router.get("/", response_model=List[UsuarioRespuesta])
-def obtener_usuarios(db: Session = Depends(get_db)):
-    return db.query(Usuario).all()
+@router.get("/", response_model=List[UserRespuesta])
+def obtener_usuarios(
+    usertype_id: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    query = db.query(User).options(joinedload(User.tipo_usuario))
+    if usertype_id:
+        query = query.filter(User.USERTYPE_ID == usertype_id)
+    return query.all()
 
-@router.get("/{usuario_id}", response_model=UsuarioRespuesta)
-def obtener_usuario(usuario_id: int, db: Session = Depends(get_db)):
-    usuario = db.query(Usuario).filter(Usuario.id == usuario_id).first()
+@router.get("/{code}", response_model=UserRespuesta)
+def obtener_usuario(code: str, db: Session = Depends(get_db)):
+    usuario = db.query(User).options(
+        joinedload(User.tipo_usuario)
+    ).filter(User.Code == code).first()
     if not usuario:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
     return usuario
 
-@router.put("/{usuario_id}", response_model=UsuarioRespuesta)
-def actualizar_usuario(usuario_id: int, datos: dict, db: Session = Depends(get_db)):
-    usuario = db.query(Usuario).filter(Usuario.id == usuario_id).first()
+@router.put("/{code}", response_model=UserRespuesta)
+def actualizar_usuario(code: str, datos: UserRespuesta, db: Session = Depends(get_db)):
+    usuario = db.query(User).filter(User.Code == code).first()
     if not usuario:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
-    for key, value in datos.items():
+    for key, value in datos.model_dump(exclude={"tipo_usuario"}).items():
         setattr(usuario, key, value)
     db.commit()
     db.refresh(usuario)
     return usuario
 
-@router.patch("/{usuario_id}/estado")
-def cambiar_estado(usuario_id: int, activo: bool, db: Session = Depends(get_db)):
-    usuario = db.query(Usuario).filter(Usuario.id == usuario_id).first()
-    if not usuario:
-        raise HTTPException(status_code=404, detail="Usuario no encontrado")
-    usuario.activo = activo
-    db.commit()
-    return {"mensaje": f"Usuario {'activado' if activo else 'desactivado'} correctamente"}
-
-@router.delete("/{usuario_id}")
-def eliminar_usuario(usuario_id: int, db: Session = Depends(get_db)):
-    usuario = db.query(Usuario).filter(Usuario.id == usuario_id).first()
+@router.delete("/{code}")
+def eliminar_usuario(code: str, db: Session = Depends(get_db)):
+    usuario = db.query(User).filter(User.Code == code).first()
     if not usuario:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
     db.delete(usuario)
     db.commit()
     return {"mensaje": "Usuario eliminado correctamente"}
+
+# ─── USER TYPES ────────────────────────────
+
+@router.get("/tipos/all", response_model=List[UserTypeRespuesta])
+def obtener_tipos_usuario(db: Session = Depends(get_db)):
+    return db.query(UserType).all()

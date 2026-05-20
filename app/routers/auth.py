@@ -1,11 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
-from jose import JWTError, jwt
+from jose import jwt
 from passlib.context import CryptContext
 from app.database import get_db
-from app.models.models import Usuario
-from app.schemas.schemas import Login, Token, UsuarioCrear, UsuarioRespuesta
+from app.models.models import User
+from app.schemas.schemas import Login, Token, UserCrear, UserRespuesta
 from app.config import settings
 
 router = APIRouter(prefix="/auth", tags=["Autenticación"])
@@ -24,24 +24,23 @@ def crear_token(data: dict):
     datos.update({"exp": expira})
     return jwt.encode(datos, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
-@router.post("/registro", response_model=UsuarioRespuesta, status_code=201)
-def registrar_usuario(usuario: UsuarioCrear, db: Session = Depends(get_db)):
-    # Verificar si el correo ya existe
-    existe = db.query(Usuario).filter(Usuario.correo == usuario.correo).first()
+@router.post("/registro", response_model=UserRespuesta, status_code=201)
+def registrar_usuario(usuario: UserCrear, db: Session = Depends(get_db)):
+    existe = db.query(User).filter(User.email == usuario.email).first()
     if existe:
         raise HTTPException(status_code=400, detail="El correo ya está registrado")
-    # Verificar si el código ya existe
-    existe_codigo = db.query(Usuario).filter(Usuario.codigo == usuario.codigo).first()
+    existe_codigo = db.query(User).filter(User.code == usuario.code).first()
     if existe_codigo:
         raise HTTPException(status_code=400, detail="El código ya está registrado")
-    # Crear usuario
-    nuevo_usuario = Usuario(
-        nombre=usuario.nombre,
-        apellido=usuario.apellido,
-        correo=usuario.correo,
-        codigo=usuario.codigo,
-        rol=usuario.rol,
-        contrasena=hashear_contrasena(usuario.contrasena),
+    nuevo_usuario = User(
+        code=usuario.code,
+        name1=usuario.name1,
+        name2=usuario.name2,
+        last_name1=usuario.last_name1,
+        last_name2=usuario.last_name2,
+        email=usuario.email,
+        cellphone=usuario.cellphone,
+        usertype_id=usuario.usertype_id,
     )
     db.add(nuevo_usuario)
     db.commit()
@@ -50,13 +49,11 @@ def registrar_usuario(usuario: UsuarioCrear, db: Session = Depends(get_db)):
 
 @router.post("/login", response_model=Token)
 def login(credenciales: Login, db: Session = Depends(get_db)):
-    usuario = db.query(Usuario).filter(Usuario.correo == credenciales.correo).first()
-    if not usuario or not verificar_contrasena(credenciales.contrasena, usuario.contrasena):
+    usuario = db.query(User).filter(User.email == credenciales.email).first()
+    if not usuario:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Correo o contraseña incorrectos",
         )
-    if not usuario.activo:
-        raise HTTPException(status_code=400, detail="Usuario inactivo")
-    token = crear_token({"sub": str(usuario.id), "rol": usuario.rol})
+    token = crear_token({"sub": str(usuario.code), "rol": usuario.usertype_id})
     return {"access_token": token, "token_type": "bearer", "usuario": usuario}
