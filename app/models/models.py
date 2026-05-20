@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Numeric, Date, ForeignKey, ForeignKeyConstraint
+from sqlalchemy import Column, String, Numeric, Date, ForeignKey, ForeignKeyConstraint, DateTime
 from sqlalchemy.orm import relationship
 from app.database import Base
 
@@ -103,8 +103,8 @@ class ReservationDetail(Base):
     reservation_number = Column(String(2), primary_key=True)
     space_id = Column(String(2), nullable=False)
     building_id = Column(String(2), nullable=False)
-    start_time = Column(Date, nullable=False)
-    end_time = Column(Date, nullable=False)
+    start_time = Column(DateTime, nullable=False)
+    end_time = Column(DateTime, nullable=False)
     status = Column(String(1), nullable=False)
 
     reserva = relationship("Reservation", back_populates="detalles")

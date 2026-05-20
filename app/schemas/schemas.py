@@ -1,6 +1,6 @@
 from pydantic import BaseModel, EmailStr
-from typing import Optional
-from datetime import date
+from typing import Optional, List
+from datetime import date, datetime
 
 # ─── USER TYPE ─────────────────────────────
 
@@ -32,6 +32,13 @@ class UserRespuesta(UserBase):
 
     class Config:
         from_attributes = True
+
+class UserActualizar(BaseModel):
+    name1: str
+    name2: Optional[str] = None
+    last_name1: str
+    last_name2: Optional[str] = None
+    cellphone: Optional[str] = None
 
 # ─── AUTH ──────────────────────────────────
 
@@ -103,9 +110,14 @@ class ReservationCrear(ReservationBase):
 
 class ReservationRespuesta(ReservationBase):
     usuario: Optional[UserRespuesta] = None
+    detalles: Optional[List["ReservationDetailRespuesta"]] = None
 
     class Config:
         from_attributes = True
+
+class ReservationActualizar(BaseModel):
+    date: date
+    code: str
 
 # ─── RESERVATION DETAIL ────────────────────
 
@@ -114,8 +126,8 @@ class ReservationDetailBase(BaseModel):
     reservation_number: str
     space_id: str
     building_id: str
-    start_time: date
-    end_time: date
+    start_time: datetime
+    end_time: datetime
     status: str
 
 class ReservationDetailCrear(ReservationDetailBase):

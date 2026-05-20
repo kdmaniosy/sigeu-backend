@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session, joinedload
 from typing import List, Optional
 from app.database import get_db
 from app.models.models import User, UserType
-from app.schemas.schemas import UserRespuesta, UserTypeRespuesta
+from app.schemas.schemas import UserRespuesta, UserTypeRespuesta, UserActualizar
 
 router = APIRouter(prefix="/usuarios", tags=["Usuarios"])
 
@@ -27,12 +27,24 @@ def obtener_usuario(code: str, db: Session = Depends(get_db)):
     return usuario
 
 @router.put("/{code}", response_model=UserRespuesta)
-def actualizar_usuario(code: str, datos: UserRespuesta, db: Session = Depends(get_db)):
-    usuario = db.query(User).filter(User.Code == code).first()
+def actualizar_usuario(
+    code: str,
+    datos: UserActualizar,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    # Solo el propio usuario o un admin pueden editar
+    if current_user.code != code and current_user.usertype_id != "AD":
+        raise HTTPException(status_code=403, detail="No tienes permiso para editar este usuario.")
+ 
+    usuario = db.query(User).filter(User.code == code).first()  # <-- era User.Code (mayuscula), error
     if not usuario:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
-    for key, value in datos.model_dump(exclude={"tipo_usuario"}).items():
+ 
+    # Actualizar solo los campos editables
+    for key, value in datos.model_dump(exclude_none=True).items():
         setattr(usuario, key, value)
+ 
     db.commit()
     db.refresh(usuario)
     return usuario
