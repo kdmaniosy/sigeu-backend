@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import and_
 from typing import List, Optional
 from datetime import date, datetime
+from app.models.models import Reservation, ReservationDetail, User
 from app.schemas.schemas import ReservationCrear, ReservationActualizar, ReservationRespuesta, ReservationDetailCrear, ReservationDetailRespuesta
 
 from app.database import get_db
@@ -76,44 +77,45 @@ def validar_disponibilidad(
 
 @router.get("/", response_model=List[ReservationRespuesta])
 def obtener_reservas(
-    code: Optional[str] = Query(None, description="Código del usuario dueño de la reserva"),
-    fecha: Optional[date] = Query(None, description="Fecha exacta de la reserva (YYYY-MM-DD)"),
-    estado_detalle: Optional[str] = Query(None, description="Filtrar por estado de detalles: A, C o P"),
-    db: Session = Depends(get_db),
+    code: Optional[str] = None,
+    fecha: Optional[str] = None,
+    db: Session = Depends(get_db)
 ):
-    """
-    Lista todas las reservas con filtros opcionales.
-    - code: filtra por el usuario que hizo la reserva
-    - fecha: filtra por la fecha de la reserva
-    - estado_detalle: filtra reservas que tengan al menos un detalle en ese estado
-    """
     query = db.query(Reservation).options(
-        joinedload(Reservation.usuario).joinedload(User.tipo_usuario),
-        joinedload(Reservation.detalles),
+        joinedload(Reservation.usuario),
+        joinedload(Reservation.detalles)
     )
-
     if code:
         query = query.filter(Reservation.code == code)
     if fecha:
         query = query.filter(Reservation.date == fecha)
-    if estado_detalle:
-        estados_validos = ["A", "C", "P"]
-        if estado_detalle not in estados_validos:
-            raise HTTPException(
-                status_code=400,
-                detail="estado_detalle inválido. Usa: A (Activo), C (Cancelado), P (Pendiente)",
-            )
-        query = query.join(Reservation.detalles).filter(
-            ReservationDetail.status == estado_detalle
-        )
-
     return query.all()
 
 
-@router.get("/{reservation_number}", response_model=ReservationRespuesta)
-def obtener_reserva(reservation_number: str, db: Session = Depends(get_db)):
-    """Obtiene una reserva específica con todos sus detalles."""
-    return get_reserva_o_404(reservation_number, db)
+@router.get("/", response_model=List[ReservationRespuesta])
+def obtener_reservas(
+    code: Optional[str] = None,
+    fecha: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    query = db.query(Reservation).options(
+        joinedload(Reservation.usuario).joinedload(User.tipo_usuario),
+        joinedload(Reservation.detalles)
+    )
+    if code:
+        query = query.filter(Reservation.code == code)
+    if fecha:
+        query = query.filter(Reservation.date == fecha)
+    reservas = query.all()
+
+    # Cargar detalles manualmente si joinedload no los trae
+    for reserva in reservas:
+        if not reserva.detalles:
+            reserva.detalles = db.query(ReservationDetail).filter(
+                ReservationDetail.reservation_number == reserva.reservation_number
+            ).all()
+
+    return reservas
 
 
 @router.post("/", response_model=ReservationRespuesta, status_code=201)
@@ -206,6 +208,20 @@ def cancelar_reserva(
         "mensaje": f"Reserva '{reservation_number}' cancelada correctamente.",
         "detalles_cancelados": len(detalles_activos),
     }
+
+
+@router.post("/actualizar-estados")
+def actualizar_estados_vencidos(db: Session = Depends(get_db)):
+    from datetime import datetime
+    ahora = datetime.utcnow()
+    detalles_vencidos = db.query(ReservationDetail).filter(
+        ReservationDetail.end_time < ahora,
+        ReservationDetail.status == "P"
+    ).all()
+    for detalle in detalles_vencidos:
+        detalle.status = "A"
+    db.commit()
+    return {"mensaje": f"{len(detalles_vencidos)} reservas actualizadas a Completada"}
 
 
 # ─── RESERVATION DETAILS ───────────────────────────────────────────────────────

@@ -38,7 +38,9 @@ class UserActualizar(BaseModel):
     name2: Optional[str] = None
     last_name1: str
     last_name2: Optional[str] = None
+    email: EmailStr
     cellphone: Optional[str] = None
+    usertype_id: str
 
 # ─── AUTH ──────────────────────────────────
 
@@ -98,27 +100,6 @@ class SpaceRespuesta(SpaceBase):
     class Config:
         from_attributes = True
 
-# ─── RESERVATION ───────────────────────────
-
-class ReservationBase(BaseModel):
-    reservation_number: str
-    date: date
-    code: str
-
-class ReservationCrear(ReservationBase):
-    pass
-
-class ReservationRespuesta(ReservationBase):
-    usuario: Optional[UserRespuesta] = None
-    detalles: Optional[List["ReservationDetailRespuesta"]] = None
-
-    class Config:
-        from_attributes = True
-
-class ReservationActualizar(BaseModel):
-    date: date
-    code: str
-
 # ─── RESERVATION DETAIL ────────────────────
 
 class ReservationDetailBase(BaseModel):
@@ -134,5 +115,26 @@ class ReservationDetailCrear(ReservationDetailBase):
     pass
 
 class ReservationDetailRespuesta(ReservationDetailBase):
+    class Config:
+        from_attributes = True
+
+# ─── RESERVATION ───────────────────────────
+
+class ReservationBase(BaseModel):
+    reservation_number: str
+    date: date
+    code: str
+
+class ReservationCrear(ReservationBase):
+    pass
+
+class ReservationActualizar(BaseModel):
+    date: date
+    code: str
+
+class ReservationRespuesta(ReservationBase):
+    usuario: Optional[UserRespuesta] = None
+    detalles: Optional[List[ReservationDetailRespuesta]] = []
+
     class Config:
         from_attributes = True
