@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import auth, reservas, espacios, usuarios
+from app.routers import auth, reservas, espacios, usuarios, aforo
 
 app = FastAPI(
     title="SIGEU API",
@@ -22,6 +22,7 @@ app.include_router(auth.router)
 app.include_router(espacios.router)
 app.include_router(reservas.router)
 app.include_router(usuarios.router)
+app.include_router(aforo.router)
 
 @app.get("/")
 def raiz():

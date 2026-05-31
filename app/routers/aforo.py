@@ -1,0 +1,69 @@
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+from sqlalchemy import Column, String, Integer, DateTime
+from sqlalchemy.sql import func
+from typing import Optional
+from pydantic import BaseModel
+from app.database import get_db, Base
+
+router = APIRouter(prefix="/aforo", tags=["Aforo"])
+
+class AforoRegistro(Base):
+    __tablename__ = "aforo"
+    __table_args__ = {"schema": "sigeu"}
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    space_id = Column(String(10), nullable=False)
+    building_id = Column(String(10), nullable=False)
+    personas_detectadas = Column(Integer, nullable=False)
+    registrado_en = Column(DateTime(timezone=True), server_default=func.now())
+
+class AforoInput(BaseModel):
+    space_id: str
+    building_id: str
+    personas_detectadas: int
+
+class AforoRespuesta(BaseModel):
+    id: int
+    space_id: str
+    building_id: str
+    personas_detectadas: int
+
+    class Config:
+        from_attributes = True
+
+@router.post("/", response_model=AforoRespuesta, status_code=201)
+def registrar_aforo(datos: AforoInput, db: Session = Depends(get_db)):
+    registro = AforoRegistro(
+        space_id=datos.space_id,
+        building_id=datos.building_id,
+        personas_detectadas=datos.personas_detectadas,
+    )
+    db.add(registro)
+    db.commit()
+    db.refresh(registro)
+    return registro
+
+@router.get("/{space_id}/{building_id}")
+def obtener_aforo_actual(space_id: str, building_id: str, db: Session = Depends(get_db)):
+    ultimo = db.query(AforoRegistro).filter(
+        AforoRegistro.space_id == space_id,
+        AforoRegistro.building_id == building_id,
+    ).order_by(AforoRegistro.registrado_en.desc()).first()
+
+    if not ultimo:
+        return {"space_id": space_id, "building_id": building_id, "personas_detectadas": 0}
+
+    return {
+        "space_id": ultimo.space_id,
+        "building_id": ultimo.building_id,
+        "personas_detectadas": ultimo.personas_detectadas,
+        "registrado_en": ultimo.registrado_en,
+    }
+
+@router.get("/")
+def obtener_aforo_todos(db: Session = Depends(get_db)):
+    ultimos = db.query(AforoRegistro).order_by(
+        AforoRegistro.registrado_en.desc()
+    ).limit(20).all()
+    return ultimos

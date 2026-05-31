@@ -26,6 +26,12 @@ def crear_token(data: dict):
 
 @router.post("/registro", response_model=UserRespuesta, status_code=201)
 def registrar_usuario(usuario: UserCrear, db: Session = Depends(get_db)):
+    # Bloquear registro directo como administrador
+    if usuario.usertype_id == "AD":
+        raise HTTPException(
+            status_code=403,
+            detail="No puedes registrarte como administrador. Contacta al administrador del sistema."
+        )
     existe = db.query(User).filter(User.email == usuario.email).first()
     if existe:
         raise HTTPException(status_code=400, detail="El correo ya está registrado")

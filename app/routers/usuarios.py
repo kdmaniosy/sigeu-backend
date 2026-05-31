@@ -4,7 +4,7 @@ from typing import List, Optional
 from app.database import get_db
 from app.models.models import User, UserType
 from app.dependencies import get_current_user
-from app.schemas.schemas import UserRespuesta, UserTypeRespuesta, UserActualizar
+from app.schemas.schemas import UserRespuesta, UserTypeRespuesta, UserActualizar, UserCrear
 
 router = APIRouter(prefix="/usuarios", tags=["Usuarios"])
 
@@ -64,3 +64,42 @@ def eliminar_usuario(code: str, db: Session = Depends(get_db)):
 @router.get("/tipos/all", response_model=List[UserTypeRespuesta])
 def obtener_tipos_usuario(db: Session = Depends(get_db)):
     return db.query(UserType).all()
+
+# ─── REGISTRAR ADMIN ────────────────────────────
+
+@router.post("/registrar-admin", response_model=UserRespuesta, status_code=201)
+def registrar_admin(
+    datos: UserCrear,
+    admin_code: str,
+    db: Session = Depends(get_db)
+):
+    # Verificar que quien registra es admin
+    admin = db.query(User).filter(
+        User.code == admin_code,
+        User.usertype_id == "AD"
+    ).first()
+    if not admin:
+        raise HTTPException(
+            status_code=403,
+            detail="Solo un administrador puede registrar otros administradores."
+        )
+    existe = db.query(User).filter(User.email == datos.email).first()
+    if existe:
+        raise HTTPException(status_code=400, detail="El correo ya está registrado")
+    existe_codigo = db.query(User).filter(User.code == datos.code).first()
+    if existe_codigo:
+        raise HTTPException(status_code=400, detail="El código ya está registrado")
+    nuevo = User(
+        code=datos.code,
+        name1=datos.name1,
+        name2=datos.name2,
+        last_name1=datos.last_name1,
+        last_name2=datos.last_name2,
+        email=datos.email,
+        cellphone=datos.cellphone,
+        usertype_id="AD",
+    )
+    db.add(nuevo)
+    db.commit()
+    db.refresh(nuevo)
+    return nuevo
