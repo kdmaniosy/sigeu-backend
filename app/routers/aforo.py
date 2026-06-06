@@ -5,6 +5,11 @@ from sqlalchemy.sql import func
 from typing import Optional
 from pydantic import BaseModel
 from app.database import get_db, Base
+from fastapi.responses import StreamingResponse
+import threading
+import time
+from fastapi import Request
+
 
 router = APIRouter(prefix="/aforo", tags=["Aforo"])
 
@@ -67,3 +72,36 @@ def obtener_aforo_todos(db: Session = Depends(get_db)):
         AforoRegistro.registrado_en.desc()
     ).limit(20).all()
     return ultimos
+
+# Variable global para el frame compartido
+_ultimo_frame: bytes | None = None
+_frame_lock = threading.Lock()
+
+def actualizar_frame(frame_bytes: bytes):
+    global _ultimo_frame
+    with _frame_lock:
+        _ultimo_frame = frame_bytes
+
+def generar_stream():
+    while True:
+        with _frame_lock:
+            frame = _ultimo_frame
+        if frame:
+            yield (
+                b"--frame\r\n"
+                b"Content-Type: image/jpeg\r\n\r\n" + frame + b"\r\n"
+            )
+        time.sleep(0.05)
+
+@router.get("/stream/{space_id}/{building_id}")
+def stream_video(space_id: str, building_id: str):
+    return StreamingResponse(
+        generar_stream(),
+        media_type="multipart/x-mixed-replace; boundary=frame"
+    )
+
+@router.post("/frame")
+async def recibir_frame(request: Request):
+    frame_bytes = await request.body()
+    actualizar_frame(frame_bytes)
+    return {"ok": True}
