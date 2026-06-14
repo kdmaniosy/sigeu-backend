@@ -105,3 +105,42 @@ async def recibir_frame(request: Request):
     frame_bytes = await request.body()
     actualizar_frame(frame_bytes)
     return {"ok": True}
+
+
+from sqlalchemy import func as sql_func
+
+@router.get("/actual/todos")
+def obtener_aforo_todos_actual(db: Session = Depends(get_db)):
+    """
+    Devuelve el último registro de aforo de cada espacio en UNA sola consulta.
+    """
+    subquery = (
+        db.query(
+            AforoRegistro.space_id,
+            AforoRegistro.building_id,
+            sql_func.max(AforoRegistro.registrado_en).label("max_fecha")
+        )
+        .group_by(AforoRegistro.space_id, AforoRegistro.building_id)
+        .subquery()
+    )
+
+    resultados = (
+        db.query(AforoRegistro)
+        .join(
+            subquery,
+            (AforoRegistro.space_id == subquery.c.space_id) &
+            (AforoRegistro.building_id == subquery.c.building_id) &
+            (AforoRegistro.registrado_en == subquery.c.max_fecha)
+        )
+        .all()
+    )
+
+    return [
+        {
+            "space_id": r.space_id,
+            "building_id": r.building_id,
+            "personas_detectadas": r.personas_detectadas,
+            "registrado_en": r.registrado_en,
+        }
+        for r in resultados
+    ]

@@ -106,7 +106,7 @@ class ReservationDetailBase(BaseModel):
     line_number: float
     reservation_number: str
     space_id: str
-    building_id: str
+    building_id: Optional[str] = None
     start_time: datetime
     end_time: datetime
     status: str

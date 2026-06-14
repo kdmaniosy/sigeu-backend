@@ -8,7 +8,12 @@ engine = create_engine(
     connect_args={
         "sslmode": "require",
         "options": "-c search_path=sigeu"
-    }
+    },
+    pool_size=5,
+    max_overflow=2,
+    pool_timeout=30,
+    pool_recycle=300,
+    pool_pre_ping=True,
 )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

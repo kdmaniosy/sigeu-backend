@@ -5,6 +5,9 @@ from typing import List, Optional
 from datetime import date, datetime
 from app.models.models import Reservation, ReservationDetail, User
 from app.schemas.schemas import ReservationCrear, ReservationActualizar, ReservationRespuesta, ReservationDetailCrear, ReservationDetailRespuesta
+from app.email_service import enviar_email, email_reserva_creada, email_reserva_cancelada
+from app.models.models import User
+import asyncio
 
 from app.database import get_db
 from app.models.models import Reservation, ReservationDetail, User
