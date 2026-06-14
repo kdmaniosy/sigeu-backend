@@ -8,6 +8,7 @@ from app.schemas.schemas import ReservationCrear, ReservationActualizar, Reserva
 from app.email_service import enviar_email, email_reserva_creada, email_reserva_cancelada
 from app.models.models import User
 import asyncio
+import threading
 
 from app.database import get_db
 from app.models.models import Reservation, ReservationDetail, User
@@ -205,7 +206,24 @@ def cancelar_reserva(
 
     for detalle in detalles_activos:
         detalle.status = "C"
+    
+    usuario = db.query(User).filter(User.code == reserva.code).first()
+    if usuario:
+        try:
+            detalle_cancelado = detalles_activos[0]
+            html = email_reserva_cancelada(
+                nombre=usuario.name1,
+                reservation_number=reservation_number,
+                espacio=f"{detalle_cancelado.space_id} - {detalle_cancelado.building_id}",
+                fecha=str(reserva.date),
+            )
 
+            def enviar_async():
+                asyncio.run(enviar_email(usuario.email, "Reserva cancelada - SIGEU", html))
+
+            threading.Thread(target=enviar_async, daemon=True).start()
+        except Exception as e:
+            print(f"Error enviando email: {e}")
     db.commit()
     return {
         "mensaje": f"Reserva '{reservation_number}' cancelada correctamente.",
@@ -262,7 +280,7 @@ def agregar_detalle(
     Agrega un detalle a una reserva existente.
     Valida solapamiento de horarios para el mismo espacio/edificio.
     """
-    get_reserva_o_404(reservation_number, db)
+    reserva = get_reserva_o_404(reservation_number, db)
 
     if detalle.start_time >= detalle.end_time:
         raise HTTPException(
@@ -290,7 +308,27 @@ def agregar_detalle(
     db.add(nuevo_detalle)
     db.commit()
     db.refresh(nuevo_detalle)
-    return nuevo_detalle
+
+    # Enviar email de confirmación
+    usuario = db.query(User).filter(User.code == reserva.code).first()
+    if usuario:
+        try:
+            html = email_reserva_creada(
+                nombre=usuario.name1,
+                reservation_number=reservation_number,
+                espacio=f"{detalle.space_id} - {detalle.building_id}",
+                fecha=str(reserva.date),
+                hora_inicio=detalle.start_time.strftime("%H:%M"),
+                hora_fin=detalle.end_time.strftime("%H:%M"),
+            )
+
+            def enviar_async():
+                asyncio.run(enviar_email(usuario.email, "Reserva confirmada - SIGEU", html))
+
+            threading.Thread(target=enviar_async, daemon=True).start()
+        except Exception as e:
+            print(f"Error enviando email: {e}")
+        return nuevo_detalle
 
 
 @router.put("/{reservation_number}/detalles/{line_number}", response_model=ReservationDetailRespuesta)

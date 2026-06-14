@@ -19,11 +19,11 @@ def obtener_espacios(
         joinedload(Space.edificio)
     )
     if tipo:
-        query = query.filter(Space.SPACE_TYPE_ID == tipo)
+        query = query.filter(Space.space_type_id == tipo)
     if capacidad_min:
-        query = query.filter(Space.CAPACITY >= capacidad_min)
+        query = query.filter(Space.capacity >= capacidad_min)
     if building_id:
-        query = query.filter(Space.BUILDING_ID == building_id)
+        query = query.filter(Space.building_id == building_id)
     return query.all()
 
 @router.get("/{space_id}/{building_id}", response_model=SpaceRespuesta)
