@@ -9,6 +9,7 @@ from fastapi.responses import StreamingResponse
 import threading
 import time
 from fastapi import Request
+from sqlalchemy import func as sql_func
 
 
 router = APIRouter(prefix="/aforo", tags=["Aforo"])
@@ -49,66 +50,6 @@ def registrar_aforo(datos: AforoInput, db: Session = Depends(get_db)):
     db.refresh(registro)
     return registro
 
-@router.get("/{space_id}/{building_id}")
-def obtener_aforo_actual(space_id: str, building_id: str, db: Session = Depends(get_db)):
-    ultimo = db.query(AforoRegistro).filter(
-        AforoRegistro.space_id == space_id,
-        AforoRegistro.building_id == building_id,
-    ).order_by(AforoRegistro.registrado_en.desc()).first()
-
-    if not ultimo:
-        return {"space_id": space_id, "building_id": building_id, "personas_detectadas": 0}
-
-    return {
-        "space_id": ultimo.space_id,
-        "building_id": ultimo.building_id,
-        "personas_detectadas": ultimo.personas_detectadas,
-        "registrado_en": ultimo.registrado_en,
-    }
-
-@router.get("/")
-def obtener_aforo_todos(db: Session = Depends(get_db)):
-    ultimos = db.query(AforoRegistro).order_by(
-        AforoRegistro.registrado_en.desc()
-    ).limit(20).all()
-    return ultimos
-
-# Variable global para el frame compartido
-_ultimo_frame: bytes | None = None
-_frame_lock = threading.Lock()
-
-def actualizar_frame(frame_bytes: bytes):
-    global _ultimo_frame
-    with _frame_lock:
-        _ultimo_frame = frame_bytes
-
-def generar_stream():
-    while True:
-        with _frame_lock:
-            frame = _ultimo_frame
-        if frame:
-            yield (
-                b"--frame\r\n"
-                b"Content-Type: image/jpeg\r\n\r\n" + frame + b"\r\n"
-            )
-        time.sleep(0.05)
-
-@router.get("/stream/{space_id}/{building_id}")
-def stream_video(space_id: str, building_id: str):
-    return StreamingResponse(
-        generar_stream(),
-        media_type="multipart/x-mixed-replace; boundary=frame"
-    )
-
-@router.post("/frame")
-async def recibir_frame(request: Request):
-    frame_bytes = await request.body()
-    actualizar_frame(frame_bytes)
-    return {"ok": True}
-
-
-from sqlalchemy import func as sql_func
-
 @router.get("/actual/todos")
 def obtener_aforo_todos_actual(db: Session = Depends(get_db)):
     """
@@ -144,3 +85,66 @@ def obtener_aforo_todos_actual(db: Session = Depends(get_db)):
         }
         for r in resultados
     ]
+
+@router.get("/")
+def obtener_aforo_todos(db: Session = Depends(get_db)):
+    ultimos = db.query(AforoRegistro).order_by(
+        AforoRegistro.registrado_en.desc()
+    ).limit(20).all()
+    return ultimos
+
+# Variable global para el frame compartido
+_ultimo_frame: bytes | None = None
+_frame_lock = threading.Lock()
+
+def actualizar_frame(frame_bytes: bytes):
+    global _ultimo_frame
+    with _frame_lock:
+        _ultimo_frame = frame_bytes
+
+def generar_stream():
+    while True:
+        with _frame_lock:
+            frame = _ultimo_frame
+        if frame:
+            yield (
+                b"--frame\r\n"
+                b"Content-Type: image/jpeg\r\n\r\n" + frame + b"\r\n"
+            )
+        time.sleep(0.05)
+    
+@router.get("/stream/{space_id}/{building_id}")
+def stream_video(space_id: str, building_id: str):
+    return StreamingResponse(
+        generar_stream(),
+        media_type="multipart/x-mixed-replace; boundary=frame"
+    )
+
+@router.get("/{space_id}/{building_id}")
+def obtener_aforo_actual(space_id: str, building_id: str, db: Session = Depends(get_db)):
+    ultimo = db.query(AforoRegistro).filter(
+        AforoRegistro.space_id == space_id,
+        AforoRegistro.building_id == building_id,
+    ).order_by(AforoRegistro.registrado_en.desc()).first()
+
+    if not ultimo:
+        return {"space_id": space_id, "building_id": building_id, "personas_detectadas": 0}
+
+    return {
+        "space_id": ultimo.space_id,
+        "building_id": ultimo.building_id,
+        "personas_detectadas": ultimo.personas_detectadas,
+        "registrado_en": ultimo.registrado_en,
+    }
+
+
+
+@router.post("/frame")
+async def recibir_frame(request: Request):
+    frame_bytes = await request.body()
+    actualizar_frame(frame_bytes)
+    return {"ok": True}
+
+
+
+
