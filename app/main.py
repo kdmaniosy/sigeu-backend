@@ -2,6 +2,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.routers import auth, reservas, espacios, usuarios, aforo
 
+
+## ─── CONFIGURACIÓN PRINCIPAL DE LA APLICACIÓN ─────────────────────────────────────────────
 app = FastAPI(
     title="SIGEU API",
     description="API para el Sistema de Gestión de Espacios Universitarios",
@@ -24,6 +26,8 @@ app.include_router(reservas.router)
 app.include_router(usuarios.router)
 app.include_router(aforo.router)
 
+
+# Rutas de prueba
 @app.get("/")
 def raiz():
     return {
@@ -32,6 +36,8 @@ def raiz():
         "docs": "/docs"
     }
 
+
+# Ruta de salud para monitoreo
 @app.get("/health")
 def health_check():
     return {"estado": "ok"}

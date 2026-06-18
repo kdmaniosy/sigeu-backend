@@ -15,22 +15,32 @@ from datetime import datetime, timedelta
 from app.email_service import enviar_email, email_recuperacion
 from pydantic import BaseModel, EmailStr
 
+
+# Router para manejar las operaciones relacionadas con la autenticación de usuarios, incluyendo registro, inicio de sesión y recuperación de contraseña
 router = APIRouter(prefix="/auth", tags=["Autenticación"])
 
+
+# Configuración de PassLib para el manejo de contraseñas
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
+
+# Funciones auxiliares para verificar y hashear contraseñas, así como para crear tokens JWT
 def verificar_contrasena(contrasena_plana, contrasena_hash):
     return pwd_context.verify(contrasena_plana, contrasena_hash)
 
+# Función para hashear contraseñas utilizando bcrypt
 def hashear_contrasena(contrasena):
     return pwd_context.hash(contrasena)
 
+# Función para crear un token JWT con una fecha de expiración
 def crear_token(data: dict):
     datos = data.copy()
     expira = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     datos.update({"exp": expira})
     return jwt.encode(datos, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
+
+# Endpoint para registrar un nuevo usuario. Se bloquea el registro directo como administrador y se verifica que el correo y código no estén ya registrados.
 @router.post("/registro", response_model=UserRespuesta, status_code=201)
 def registrar_usuario(usuario: UserCrear, db: Session = Depends(get_db)):
     # Bloquear registro directo como administrador
@@ -60,6 +70,7 @@ def registrar_usuario(usuario: UserCrear, db: Session = Depends(get_db)):
     db.refresh(nuevo_usuario)
     return nuevo_usuario
 
+# Endpoint para iniciar sesión. Se verifica que el correo exista y que la contraseña sea correcta antes de generar un token JWT.
 @router.post("/login", response_model=Token)
 def login(credenciales: Login, db: Session = Depends(get_db)):
     usuario = db.query(User).filter(User.email == credenciales.email).first()
@@ -76,16 +87,19 @@ def login(credenciales: Login, db: Session = Depends(get_db)):
 codigos_recuperacion: dict[str, tuple[str, datetime]] = {}
 
 
+# Endpoint para solicitar la recuperación de contraseña. Se genera un código de verificación y se envía por correo al usuario, sin revelar si el correo existe o no.
 class RecuperarPasswordRequest(BaseModel):
     email: EmailStr
 
 
+# Endpoint para verificar el código de recuperación y cambiar la contraseña. Se valida el código, verifica que no haya expirado y actualiza la contraseña del usuario.
 class VerificarCodigoRequest(BaseModel):
     email: EmailStr
     codigo: str
     nueva_contrasena: str
 
 
+# Endpoint para solicitar la recuperación de contraseña. Se genera un código de verificación y se envía por correo al usuario, sin revelar si el correo existe o no.
 @router.post("/recuperar-password")
 def solicitar_recuperacion(datos: RecuperarPasswordRequest, db: Session = Depends(get_db)):
     usuario = db.query(User).filter(User.email == datos.email).first()
@@ -114,6 +128,7 @@ def solicitar_recuperacion(datos: RecuperarPasswordRequest, db: Session = Depend
     return {"mensaje": "Si el correo existe, recibirás un código de verificación."}
 
 
+# Endpoint para verificar el código de recuperación y cambiar la contraseña. Se valida el código, verifica que no haya expirado y actualiza la contraseña del usuario.
 @router.post("/verificar-codigo")
 def verificar_codigo_y_cambiar(datos: VerificarCodigoRequest, db: Session = Depends(get_db)):
     registro = codigos_recuperacion.get(datos.email)

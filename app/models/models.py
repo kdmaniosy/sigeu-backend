@@ -2,7 +2,7 @@ from sqlalchemy import Column, String, Numeric, Date, ForeignKey, ForeignKeyCons
 from sqlalchemy.orm import relationship
 from app.database import Base
 
-
+# Modelos de la base de datos para el sistema de reservas de espacios universitarios
 class UserType(Base):
     __tablename__ = "user_type"
     __table_args__ = {"schema": "sigeu"}
@@ -13,6 +13,7 @@ class UserType(Base):
     usuarios = relationship("User", back_populates="tipo_usuario")
 
 
+# Modelo para representar las ubicaciones de los edificios en la universidad
 class Location(Base):
     __tablename__ = "location"
     __table_args__ = {"schema": "sigeu"}
@@ -23,6 +24,7 @@ class Location(Base):
     edificios = relationship("Building", back_populates="ubicacion")
 
 
+# Modelo para representar los edificios de la universidad, relacionados con su ubicación
 class Building(Base):
     __tablename__ = "building"
     __table_args__ = {"schema": "sigeu"}
@@ -35,6 +37,7 @@ class Building(Base):
     espacios = relationship("Space", back_populates="edificio")
 
 
+# Modelo para representar los tipos de espacios disponibles en la universidad (aulas, laboratorios, etc.)
 class SpaceType(Base):
     __tablename__ = "space_type"
     __table_args__ = {"schema": "sigeu"}
@@ -45,6 +48,7 @@ class SpaceType(Base):
     espacios = relationship("Space", back_populates="tipo_espacio")
 
 
+# Modelo para representar los espacios físicos de la universidad, relacionados con su edificio y tipo
 class Space(Base):
     __tablename__ = "space"
     __table_args__ = {"schema": "sigeu"}
@@ -60,6 +64,7 @@ class Space(Base):
     tipo_espacio = relationship("SpaceType", back_populates="espacios")
 
 
+# Modelo para representar los usuarios del sistema, con su información personal y tipo de usuario
 class User(Base):
     __tablename__ = "user"
     __table_args__ = {"schema": "sigeu"}
@@ -77,6 +82,7 @@ class User(Base):
     reservas = relationship("Reservation", back_populates="usuario")
 
 
+# Modelo para representar las reservas realizadas por los usuarios, con su número de reserva, fecha y usuario asociado
 class Reservation(Base):
     __tablename__ = "reservation"
     __table_args__ = {"schema": "sigeu"}
@@ -89,6 +95,7 @@ class Reservation(Base):
     detalles = relationship("ReservationDetail", back_populates="reserva")
 
 
+# Modelo para representar los detalles de cada reserva, incluyendo el espacio reservado, horario y estado
 class ReservationDetail(Base):
     __tablename__ = "reservation_detail"
     __table_args__ = (

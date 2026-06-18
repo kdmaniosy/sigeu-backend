@@ -2,6 +2,8 @@ from fastapi_mail import FastMail, MessageSchema, ConnectionConfig, MessageType
 from pydantic import EmailStr
 from app.config import settings
 
+
+# ─── CONFIGURACIÓN DEL SERVICIO DE EMAIL ─────────────────────────────────────────────
 conf = ConnectionConfig(
     MAIL_USERNAME=settings.MAIL_USERNAME,
     MAIL_PASSWORD=settings.MAIL_PASSWORD,
@@ -14,6 +16,8 @@ conf = ConnectionConfig(
     VALIDATE_CERTS=True,
 )
 
+
+# ─── FUNCIONES PARA ENVIAR EMAILS ────────────────────────────
 async def enviar_email(destinatario: EmailStr, asunto: str, cuerpo_html: str):
     mensaje = MessageSchema(
         subject=asunto,

@@ -8,6 +8,8 @@ from app.schemas.schemas import UserRespuesta, UserTypeRespuesta, UserActualizar
 
 router = APIRouter(prefix="/usuarios", tags=["Usuarios"])
 
+
+# CRUD para Usuarios
 @router.get("/", response_model=List[UserRespuesta])
 def obtener_usuarios(
     usertype_id: Optional[str] = None,
@@ -18,6 +20,7 @@ def obtener_usuarios(
         query = query.filter(User.USERTYPE_ID == usertype_id)
     return query.all()
 
+# Obtener un usuario específico por su código de usuario
 @router.get("/{code}", response_model=UserRespuesta)
 def obtener_usuario(code: str, db: Session = Depends(get_db)):
     usuario = db.query(User).options(
@@ -27,6 +30,7 @@ def obtener_usuario(code: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
     return usuario
 
+# Crear un nuevo usuario
 @router.put("/{code}", response_model=UserRespuesta)
 def actualizar_usuario(
     code: str,
@@ -50,6 +54,7 @@ def actualizar_usuario(
     db.refresh(usuario)
     return usuario
 
+# Eliminar un usuario por su código de usuario
 @router.delete("/{code}")
 def eliminar_usuario(code: str, db: Session = Depends(get_db)):
     usuario = db.query(User).filter(User.Code == code).first()

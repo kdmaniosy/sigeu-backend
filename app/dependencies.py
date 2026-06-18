@@ -7,9 +7,11 @@ from app.database import get_db
 from app.models.models import User
 from app.config import settings
 
+## ─── DEPENDENCIAS DE AUTENTICACIÓN Y AUTORIZACIÓN ─────────────────────────────────────────────
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 
+# Obtener el usuario autenticado a partir del token JWT
 def get_current_user(
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db),
@@ -38,6 +40,7 @@ def get_current_user(
     return usuario
 
 
+# Verificar que el usuario autenticado sea administrador
 def get_current_admin(current_user: User = Depends(get_current_user)) -> User:
     """
     Verifica que el usuario autenticado sea administrador (usertype_id == 'AD').

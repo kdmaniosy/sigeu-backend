@@ -23,6 +23,7 @@ router = APIRouter(prefix="/reservas", tags=["Reservas"])
 
 # ─── UTILIDADES ────────────────────────────────────────────────────────────────
 
+# Función auxiliar para obtener una reserva con sus relaciones o lanzar 404
 def get_reserva_o_404(reservation_number: str, db: Session) -> Reservation:
     """Obtiene una reserva con sus relaciones o lanza 404."""
     reserva = (
@@ -36,6 +37,7 @@ def get_reserva_o_404(reservation_number: str, db: Session) -> Reservation:
     return reserva
 
 
+# Función para validar que no haya solapamientos de horarios para un espacio/edificio
 def validar_disponibilidad(
     db: Session,
     space_id: str,
@@ -79,6 +81,7 @@ def validar_disponibilidad(
 
 # ─── RESERVAS ──────────────────────────────────────────────────────────────────
 
+# Listar reservas con filtros opcionales por código de usuario o fecha
 @router.get("/", response_model=List[ReservationRespuesta])
 def obtener_reservas(
     code: Optional[str] = None,
@@ -96,6 +99,7 @@ def obtener_reservas(
     return query.all()
 
 
+# Listar reservas con filtros opcionales por código de usuario o fecha, cargando detalles manualmente
 @router.get("/", response_model=List[ReservationRespuesta])
 def obtener_reservas(
     code: Optional[str] = None,
@@ -122,6 +126,7 @@ def obtener_reservas(
     return reservas
 
 
+# Obtener una reserva específica por su número de reserva
 @router.post("/", response_model=ReservationRespuesta, status_code=201)
 def crear_reserva(reserva: ReservationCrear, db: Session = Depends(get_db)):
     """
@@ -147,6 +152,7 @@ def crear_reserva(reserva: ReservationCrear, db: Session = Depends(get_db)):
     return nueva
 
 
+# Actualizar una reserva existente por su número de reserva
 @router.put("/{reservation_number}", response_model=ReservationRespuesta)
 def actualizar_reserva(
     reservation_number: str,
@@ -165,7 +171,7 @@ def actualizar_reserva(
     db.refresh(reserva)
     return reserva
 
-
+# Cancelar una reserva por su número de reserva (marcar detalles como cancelados)
 @router.delete("/{reservation_number}")
 def cancelar_reserva(
     reservation_number: str,
@@ -231,6 +237,7 @@ def cancelar_reserva(
     }
 
 
+# Endpoint para actualizar estados de detalles vencidos (pendientes a completados)
 @router.post("/actualizar-estados")
 def actualizar_estados_vencidos(db: Session = Depends(get_db)):
     from datetime import datetime
@@ -247,6 +254,7 @@ def actualizar_estados_vencidos(db: Session = Depends(get_db)):
 
 # ─── RESERVATION DETAILS ───────────────────────────────────────────────────────
 
+# Listar detalles de una reserva con filtro opcional por estado
 @router.get("/{reservation_number}/detalles", response_model=List[ReservationDetailRespuesta])
 def obtener_detalles(
     reservation_number: str,
@@ -270,6 +278,7 @@ def obtener_detalles(
     return query.all()
 
 
+# Agregar un nuevo detalle a una reserva existente, validando solapamientos
 @router.post("/{reservation_number}/detalles", response_model=ReservationDetailRespuesta, status_code=201)
 def agregar_detalle(
     reservation_number: str,
@@ -330,7 +339,7 @@ def agregar_detalle(
             print(f"Error enviando email: {e}")
         return nuevo_detalle
 
-
+# Endpoint para actualizar un detalle de reserva (horario, espacio, estado)
 @router.put("/{reservation_number}/detalles/{line_number}", response_model=ReservationDetailRespuesta)
 def actualizar_detalle(
     reservation_number: str,
@@ -384,6 +393,7 @@ def actualizar_detalle(
     return detalle
 
 
+# Endpoint para actualizar estados de detalles vencidos (pendientes a completados)
 @router.patch("/{reservation_number}/detalles/{line_number}/estado")
 def actualizar_estado_detalle(
     reservation_number: str,

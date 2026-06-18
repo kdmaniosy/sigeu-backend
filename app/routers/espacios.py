@@ -5,8 +5,12 @@ from app.database import get_db
 from app.models.models import Space
 from app.schemas.schemas import SpaceCrear, SpaceRespuesta
 
+
+# Espacios Router
 router = APIRouter(prefix="/espacios", tags=["Espacios"])
 
+
+# CRUD para Espacios
 @router.get("/", response_model=List[SpaceRespuesta])
 def obtener_espacios(
     tipo: Optional[str] = None,
@@ -26,6 +30,7 @@ def obtener_espacios(
         query = query.filter(Space.building_id == building_id)
     return query.all()
 
+# Obtener un espacio específico por su ID y el ID del edificio
 @router.get("/{space_id}/{building_id}", response_model=SpaceRespuesta)
 def obtener_espacio(space_id: str, building_id: str, db: Session = Depends(get_db)):
     espacio = db.query(Space).options(
@@ -39,6 +44,8 @@ def obtener_espacio(space_id: str, building_id: str, db: Session = Depends(get_d
         raise HTTPException(status_code=404, detail="Espacio no encontrado")
     return espacio
 
+
+# Crear un nuevo espacio
 @router.post("/", response_model=SpaceRespuesta, status_code=201)
 def crear_espacio(espacio: SpaceCrear, db: Session = Depends(get_db)):
     nuevo = Space(**espacio.model_dump())
@@ -47,6 +54,8 @@ def crear_espacio(espacio: SpaceCrear, db: Session = Depends(get_db)):
     db.refresh(nuevo)
     return nuevo
 
+
+# Actualizar un espacio existente por su ID y el ID del edificio
 @router.put("/{space_id}/{building_id}", response_model=SpaceRespuesta)
 def actualizar_espacio(space_id: str, building_id: str, datos: SpaceCrear, db: Session = Depends(get_db)):
     espacio = db.query(Space).filter(
@@ -61,6 +70,8 @@ def actualizar_espacio(space_id: str, building_id: str, datos: SpaceCrear, db: S
     db.refresh(espacio)
     return espacio
 
+
+# Eliminar un espacio por su ID y el ID del edificio
 @router.delete("/{space_id}/{building_id}")
 def eliminar_espacio(space_id: str, building_id: str, db: Session = Depends(get_db)):
     espacio = db.query(Space).filter(

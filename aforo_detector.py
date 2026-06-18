@@ -4,10 +4,13 @@ import requests
 import time
 import threading
 
+# Variables de configuración
 API_URL = "http://localhost:8000"
 ESPACIO_ID = "S6"
 BUILDING_ID = "E1"
 
+
+# Cargar modelo YOLOv8 preentrenado (versión pequeña)
 model = YOLO("yolov8n.pt")
 model.overrides["verbose"] = False
 
@@ -21,6 +24,8 @@ INTERVALO_ENVIO_DATOS = 5    # datos de aforo cada 5s
 INTERVALO_ENVIO_FRAME = 0.1  # frames cada 100ms (10 FPS en stream)
 INTERVALO_DETECCION = 5      # detectar 1 de cada 5 frames
 
+
+# Funciones para enviar datos al backend
 def enviar_datos(personas: int):
     try:
         requests.post(f"{API_URL}/aforo/", json={
@@ -31,6 +36,7 @@ def enviar_datos(personas: int):
     except:
         pass
 
+# Función para enviar frames al backend
 def enviar_frame(frame_bytes: bytes):
     try:
         requests.post(
@@ -42,6 +48,8 @@ def enviar_frame(frame_bytes: bytes):
     except:
         pass
 
+
+# Configurar captura de video (ajustar resolución y FPS para mejor rendimiento)
 cap = cv2.VideoCapture(0)
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, 426)
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 320)
@@ -51,6 +59,8 @@ cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)  # buffer mínimo = menos lag
 frame_count = 0
 ultimo_annotated = None
 
+
+# Mensaje de inicio
 print("✅ SIGEU - Detector de aforo iniciado")
 print(f"   Espacio: {ESPACIO_ID} | Edificio: {BUILDING_ID}")
 print("   Presiona 'q' para salir\n")

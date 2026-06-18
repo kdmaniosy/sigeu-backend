@@ -3,6 +3,8 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from app.config import settings
 
+
+## ─── CONFIGURACIÓN DE LA BASE DE DATOS ─────────────────────────────────────────────
 engine = create_engine(
     settings.DATABASE_URL,
     connect_args={
@@ -16,6 +18,7 @@ engine = create_engine(
     pool_pre_ping=True,
 )
 
+# Crear una sesión local para interactuar con la base de datos
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()
